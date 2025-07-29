@@ -14,25 +14,42 @@ function MultiListMain() {
   const [columns, setColumns] = useState<Column[]>([
     {
       id: uuid(),
-      name: "Column1",
-      tasks: [
-        { id: uuid(), name: "test1" },
-        { id: uuid(), name: "test2" },
-        { id: uuid(), name: "test3" },
-        { id: uuid(), name: "test4" },
-      ],
+      name: "Column 1",
+      tasks: [],
     },
     {
       id: uuid(),
-      name: "Column2",
-      tasks: [
-        { id: uuid(), name: "test5"},
-        { id: uuid(), name: "test6"},
-        { id: uuid(), name: "test7"},
-        { id: uuid(), name: "test8"},
-      ],
+      name: "Column 2",
+      tasks: [],
     },
   ]);
+
+  function addTaskToColumn(columnId: string) {
+    setColumns((prev) => {
+      return prev.map((col) => {
+        return col.id === columnId
+          ? {
+              ...col,
+              tasks: [
+                ...col.tasks,
+                { id: uuid(), name: "Task " + (col.tasks.length + 1) },
+              ],
+            }
+          : col;
+      });
+    });
+  }
+
+  function addColumn() {
+    setColumns((prev) => [
+      ...prev,
+      { id: uuid(), name: "Column " + (prev.length + 1), tasks: [] },
+    ]);
+  }
+
+  function removeColumn(columnId: string) {
+    setColumns((prev) => prev.filter(c => c.id !== columnId));
+  }
 
   // Callback function to make the item transfer more readable
   const transferArrayItem = useCallback(
@@ -115,7 +132,7 @@ function MultiListMain() {
       monitorForElements({
         // We make sure that we are actually dragging a column not a card
         canMonitor({ source }) {
-          return source.data.type === "column"
+          return source.data.type === "column";
         },
         // The ondrop handler gets the source element and the location of where it's going to drop to
         onDrop: ({ source, location }) => {
@@ -129,117 +146,127 @@ function MultiListMain() {
             return reorder({
               list: prev,
               startIndex: sourceIndex,
-              finishIndex: destIndex
-            })
-          })
-        }
+              finishIndex: destIndex,
+            });
+          });
+        },
       }),
       // This second one handles the cards being dragged either in the same column or across columns
       monitorForElements({
-      // Just like the columns we make sure that we are actually dragging a card 
-      canMonitor({ source }) {
-        return source.data.type === "card"
-      },
-      // The start of this is the same as columns
-      onDrop: ({ source, location }) => {
-        const dest = location.current.dropTargets[0];
-        if (!dest) return;
-        
-        // Instead of getting indexes of items we get the id of each column
-        const sourceColumnId: string = source.data.columnId as string;
-        const destColumnId: string = dest.data.columnId as string;
+        // Just like the columns we make sure that we are actually dragging a card
+        canMonitor({ source }) {
+          return source.data.type === "card";
+        },
+        // The start of this is the same as columns
+        onDrop: ({ source, location }) => {
+          const dest = location.current.dropTargets[0];
+          if (!dest) return;
 
-        // We create a variable to check that the destination element is a card (true) if not (false)
-        const isDroppingCard = dest.data.type === "card";
+          // Instead of getting indexes of items we get the id of each column
+          const sourceColumnId: string = source.data.columnId as string;
+          const destColumnId: string = dest.data.columnId as string;
 
-        // First condition to see if we are dragging a card AND in the same column
-        if (isDroppingCard && sourceColumnId === destColumnId) {
-          // Grab the item's individual ids check that they actually exist
-          const sourceId: string = source.data.id as string;
-          const destId: string = dest.data.id as string;
-          if (!sourceId || !destId) return;
-          // Extract the edge from the source data since we reoder cards by edge detection 
-          const closestEdge = extractClosestEdge(dest.data);
-          // If we drop on the same element and we are on top return here nothing to change
-          if (sourceId === destId && closestEdge === "top") return;
+          // We create a variable to check that the destination element is a card (true) if not (false)
+          const isDroppingCard = dest.data.type === "card";
 
-          // Now we find the indexes of the columns that we are dragging between
-          const sourceColumn = columns.findIndex(
-            (column) => column.id === sourceColumnId,
-          );
-          const destColumn = columns.findIndex(
-            (column) => column.id === destColumnId,
-          );
+          // First condition to see if we are dragging a card AND in the same column
+          if (isDroppingCard && sourceColumnId === destColumnId) {
+            // Grab the item's individual ids check that they actually exist
+            const sourceId: string = source.data.id as string;
+            const destId: string = dest.data.id as string;
+            if (!sourceId || !destId) return;
+            // Extract the edge from the source data since we reoder cards by edge detection
+            const closestEdge = extractClosestEdge(dest.data);
+            // If we drop on the same element and we are on top return here nothing to change
+            if (sourceId === destId && closestEdge === "top") return;
 
-          // Then find the indexes of what we are dragging 
-          const sourceIndex =
-            columns[sourceColumn].tasks.findIndex(
-              (task) => task.id === sourceId,
-            ) ?? -1;
-          // And the index of where we are dropping
-          const destIndex =
-            columns[destColumn].tasks.findIndex((task) => task.id === destId) ??
-            -1;
+            // Now we find the indexes of the columns that we are dragging between
+            const sourceColumn = columns.findIndex(
+              (column) => column.id === sourceColumnId,
+            );
+            const destColumn = columns.findIndex(
+              (column) => column.id === destColumnId,
+            );
 
-          // We create a new variable that stores the new reordered list
-          // This is where we also pass the closestEdge for more accurate reordering
-          const reordered = reorderWithEdge({
-            list: columns[destColumn].tasks,
-            startIndex: sourceIndex,
-            indexOfTarget: destIndex,
-            closestEdgeOfTarget: closestEdge,
-            axis: "vertical",
-          });
+            // Then find the indexes of what we are dragging
+            const sourceIndex =
+              columns[sourceColumn].tasks.findIndex(
+                (task) => task.id === sourceId,
+              ) ?? -1;
+            // And the index of where we are dropping
+            const destIndex =
+              columns[destColumn].tasks.findIndex(
+                (task) => task.id === destId,
+              ) ?? -1;
 
-          // This is where we update the actual columns
-          // We get the column from it's index and set it's tasks equal to the redorered list created
-          flushSync(() => {
-            setColumns((prev) => {
-              const currentColumns = [...prev];
-              currentColumns[destColumn] = {
-                ...currentColumns[destColumn],
-                tasks: reordered,
-              };
-              return currentColumns;
+            // We create a new variable that stores the new reordered list
+            // This is where we also pass the closestEdge for more accurate reordering
+            const reordered = reorderWithEdge({
+              list: columns[destColumn].tasks,
+              startIndex: sourceIndex,
+              indexOfTarget: destIndex,
+              closestEdgeOfTarget: closestEdge,
+              axis: "vertical",
             });
-          });
-        } else if (
-          // This is for inter column reordering we check if we are dropping on a card in a different column
-          // Or if the drop target is the type column (for empty columns or just simply dropping on a column)
-          (isDroppingCard && sourceColumnId !== destColumnId) ||
-          dest.data.type === "column"
-        ) {
-          // We get the closest edge once again
-          const closestEdge = extractClosestEdge(dest.data);
-          // Another big update where we use the callback transferArrayItem
-          flushSync(() => {
-            transferArrayItem({
-              // We pass all the necessary data for a transfer
-              // Now see line 38
-              startColId: sourceColumnId,
-              finishColId: destColumnId,
-              indexInStart: source.data.index as number,
-              indexInFinish: dest.data.index as number | undefined,
-              edge: closestEdge,
+
+            // This is where we update the actual columns
+            // We get the column from it's index and set it's tasks equal to the redorered list created
+            flushSync(() => {
+              setColumns((prev) => {
+                const currentColumns = [...prev];
+                currentColumns[destColumn] = {
+                  ...currentColumns[destColumn],
+                  tasks: reordered,
+                };
+                return currentColumns;
+              });
             });
-          });
-        }
-      },
-    }));
+          } else if (
+            // This is for inter column reordering we check if we are dropping on a card in a different column
+            // Or if the drop target is the type column (for empty columns or just simply dropping on a column)
+            (isDroppingCard && sourceColumnId !== destColumnId) ||
+            dest.data.type === "column"
+          ) {
+            // We get the closest edge once again
+            const closestEdge = extractClosestEdge(dest.data);
+            // Another big update where we use the callback transferArrayItem
+            flushSync(() => {
+              transferArrayItem({
+                // We pass all the necessary data for a transfer
+                // Now see line 38
+                startColId: sourceColumnId,
+                finishColId: destColumnId,
+                indexInStart: source.data.index as number,
+                indexInFinish: dest.data.index as number | undefined,
+                edge: closestEdge,
+              });
+            });
+          }
+        },
+      }),
+    );
   }, [columns, transferArrayItem]);
 
   return (
     <>
-      <div className="flex flex-row p-4 gap-4 bg-[#2b343c] h-screen">
+      <div className="flex flex-row p-4 gap-4 bg-[#2b343c] h-screen  overflow-x-auto whitespace-nowrap">
         {/* Render each column as the MultiListView component and pass the necessary props */}
         {columns.map((column, index) => (
           <MultiListView
+            removeColumn={removeColumn}
+            addTask={addTaskToColumn}
             column={column}
             columnId={column.id}
             index={index}
             key={index}
           />
         ))}
+        <button
+          className="w-72 min-w-72 h-fit p-2 px-4 border-2 border-dashed rounded-xl text-gray-300"
+          onClick={addColumn}
+        >
+          Add new column
+        </button>
       </div>
     </>
   );

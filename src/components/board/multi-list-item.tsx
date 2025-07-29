@@ -22,7 +22,6 @@ interface ListItemProps {
   columnId: string;
 }
 
-
 // State type to do some conditional rendering
 type TaskState =
   | { type: "idle" }
