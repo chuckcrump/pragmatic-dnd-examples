@@ -11,18 +11,7 @@ import type { Column, Item } from "./types";
 
 function MultiListMain() {
   // Set up initial data
-  const [columns, setColumns] = useState<Column[]>([
-    {
-      id: uuid(),
-      name: "Column 1",
-      tasks: [],
-    },
-    {
-      id: uuid(),
-      name: "Column 2",
-      tasks: [],
-    },
-  ]);
+  const [columns, setColumns] = useState<Column[]>([]);
 
   function addTaskToColumn(columnId: string) {
     setColumns((prev) => {
@@ -48,7 +37,7 @@ function MultiListMain() {
   }
 
   function removeColumn(columnId: string) {
-    setColumns((prev) => prev.filter(c => c.id !== columnId));
+    setColumns((prev) => prev.filter((c) => c.id !== columnId));
   }
 
   // Callback function to make the item transfer more readable

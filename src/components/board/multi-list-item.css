@@ -6,10 +6,9 @@
     top: -1px;
     left: 0;
     right: 0;
-    height: 2px;
-    background-color: #669df1;
+    height: 0;
+    border-top: 2px dashed #669df1;
     z-index: 1;
-    border-radius: 10px;
 }
 
 .btm-div::after {
@@ -18,8 +17,7 @@
     bottom: -1px;
     left: 0;
     right: 0;
-    height: 2px;
-    background-color: #669df1;
+    height: 0;
+    border-top: 2px dashed #669df1;
     z-index: 1;
-    border-radius: 10px;
 }

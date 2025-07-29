@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import { Ellipsis, Plus  } from "lucide-react";
+import { Ellipsis, Plus } from "lucide-react";
 import MultiListItem from "./multi-list-item";
 import type { Column } from "./types";
 
@@ -20,7 +20,7 @@ function MultiListView({
   columnId,
   index,
   addTask,
-  removeColumn
+  removeColumn,
 }: MultiListViewProps) {
   // We create a refrence to the column <div> (used by pragmatic)
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -40,10 +40,10 @@ function MultiListView({
     }
     if (!optionsRef.current) return;
     const rect = optionsRef.current.getBoundingClientRect();
-    const newPosition: { x: number, y: number } = {
+    const newPosition: { x: number; y: number } = {
       x: rect.left + rect.width,
       y: rect.top + rect.height,
-    }
+    };
     setOptionsPos(newPosition);
     setShowOptions(true);
   }
@@ -133,20 +133,31 @@ function MultiListView({
           </button>
         </div>
       </div>
-      {showOptions ? <OptionsMenu pos={optionsPos} removeColumn={removeCol} id={column.id} /> : null}
+      {showOptions ? (
+        <OptionsMenu pos={optionsPos} removeColumn={removeCol} id={column.id} />
+      ) : null}
     </>
   );
 }
 
-function OptionsMenu(
-  {
-    pos,
-    removeColumn,
-    id
-  }: {
-    pos: { x: number; y: number },
-    removeColumn: (columnId: string) => void, id: string
-  }) {
+function ColumnDragPreview({ rect }: { rect: DOMRect }) {
+  return (
+    <div
+      style={{ width: rect.width, height: rect.height }}
+      className="rounded-xl bg-[#1f1f21]"
+    ></div>
+  );
+}
+
+function OptionsMenu({
+  pos,
+  removeColumn,
+  id,
+}: {
+  pos: { x: number; y: number };
+  removeColumn: (columnId: string) => void;
+  id: string;
+}) {
   return (
     <div
       className="fixed p-1 rounded-md bg-[#1f1f21] border-[1px] border-[#404040] z-20 text-white"
