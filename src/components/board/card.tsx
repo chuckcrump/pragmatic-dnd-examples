@@ -50,9 +50,9 @@ function Card({ item, index, columnId }: ListItemProps) {
         }),
         onDrop: () => {
           // When we drop a card set it's state back to idle
-          setTimeout(() => {
-            setState({ type: "idle" });
-          });
+          setState({ type: "idle" });
+          //setTimeout(() => {
+          //});
         },
         // This is new though this is what the name suggests a way to customize the drap preview
         onGenerateDragPreview({ nativeSetDragImage, location }) {
@@ -139,9 +139,9 @@ function Card({ item, index, columnId }: ListItemProps) {
         },
         onDrop: () => {
           // When we drop a card set it's state back to idle
-          setTimeout(() => {
-            setState({ type: "idle" });
-          });
+          setState({ type: "idle" });
+          //setTimeout(() => {
+          //});
         },
       }),
     );

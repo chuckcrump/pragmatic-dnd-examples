@@ -132,14 +132,31 @@ function Board() {
         },
         // The ondrop handler gets the source element and the location of where it's going to drop to
         onDrop: ({ source, location }) => {
+          if (
+            !location.current.dropTargets ||
+            location.current.dropTargets.length === 0
+          )
+            return;
+
           // We get the first viable drop target get the columns indexes and swap them
           const dest = location.current.dropTargets[0];
           const sourceIndex: number = source.data.index as number;
           const destIndex: number = dest.data.index as number;
           const closestEdge: Edge = extractClosestEdge(dest.data) || "right";
+
+          if (
+            sourceIndex === destIndex ||
+            destIndex === undefined ||
+            destIndex === null ||
+            destIndex < 0 ||
+            sourceIndex < 0
+          )
+            return;
           // This part actually reorders with the reorder function from Pragmatic
           // We provide the previous columns as the list, pass the correct indexes, and let pragmatic do the rest
           setColumns((prev) => {
+            if (destIndex >= prev.length || sourceIndex >= prev.length)
+              return prev;
             return reorderWithEdge({
               list: prev,
               startIndex: sourceIndex,

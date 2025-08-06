@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
@@ -28,7 +28,7 @@ function Column({ column, index, addTask, removeColumn }: MultiListViewProps) {
 
   const [state, setState] = useState<DraggableState>({ type: "idle" });
   // Set the passed column object as the value for our hook (L for local)
-  const [localColumn, setLocalColumn] = useState<TColumn>(column);
+  const localColumn = useMemo(() => column, [column]);
   const [optionsPos, setOptionsPos] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,
@@ -58,7 +58,6 @@ function Column({ column, index, addTask, removeColumn }: MultiListViewProps) {
   // Same setup step as the multi-list-main
   useEffect(() => {
     // Except whenever column changes in the parent component update our local one
-    setLocalColumn(column);
     // Get and check if the element ref is there and valid
     const element = containerRef.current;
     const list = listRef.current;
@@ -178,7 +177,10 @@ function Column({ column, index, addTask, removeColumn }: MultiListViewProps) {
           </button>
         </div>
         {/* The actual list of draggable cards */}
-        <ul className="flex flex-col overflow-y-auto min-h-4" ref={listRef}>
+        <ul
+          className="flex flex-col overflow-y-auto min-h-4 my-1"
+          ref={listRef}
+        >
           {/* Conditional check if there are no cards */}
           {localColumn.tasks.length !== 0 ? (
             localColumn.tasks.map((task, index) => (
