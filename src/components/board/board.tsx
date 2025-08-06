@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import { extractClosestEdge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
+import {
+  extractClosestEdge,
+  type Edge,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
 import { reorderWithEdge } from "@atlaskit/pragmatic-drag-and-drop-hitbox/util/reorder-with-edge";
-import { reorder } from "@atlaskit/pragmatic-drag-and-drop/reorder";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import { flushSync } from "react-dom";
 import { v4 as uuid } from "uuid";
-import MultiListView from "./multi-list-view";
-import type { Column, Item } from "./types";
+import Column from "./column";
+import type { TColumn, TItem } from "./types";
 
-function MultiListMain() {
+function Board() {
   // Set up initial data
-  const [columns, setColumns] = useState<Column[]>([]);
+  const [columns, setColumns] = useState<TColumn[]>([]);
 
   function addTaskToColumn(columnId: string) {
     setColumns((prev) => {
@@ -57,57 +59,62 @@ function MultiListMain() {
     }) => {
       // If both column ids are the same we don't do any unnecessary updates
       if (startColId === finishColId) return;
-      setColumns((prev) => {
-        // We get the actual column objects and their indexes
-        const sourceColumn = prev.find((c) => c.id === startColId);
-        const destColumn = prev.find((c) => c.id === finishColId);
-        const sourceIndex = prev.findIndex((c) => c.id === startColId);
-        const destIndex = prev.findIndex((c) => c.id === finishColId);
-        if (!sourceColumn || !destColumn) return prev;
+      flushSync(() => {
+        setColumns((prev) => {
+          // We get the actual column objects and their indexes
+          const sourceColumn = prev.find((c) => c.id === startColId);
+          const destColumn = prev.find((c) => c.id === finishColId);
+          const sourceIndex = prev.findIndex((c) => c.id === startColId);
+          const destIndex = prev.findIndex((c) => c.id === finishColId);
+          if (!sourceColumn || !destColumn) return prev;
 
-        // Extract the task that we are going to move
-        const task: Item | undefined = sourceColumn.tasks[indexInStart];
-        if (!task) return prev;
+          // Extract the task that we are going to move
+          const task: TItem | undefined = sourceColumn.tasks[indexInStart];
+          if (!task) return prev;
 
-        // Create a copy of the destination tasks array
-        const destTasks = [...destColumn.tasks];
+          // Create a copy of the destination tasks array
+          const destTasks = [...destColumn.tasks];
 
-        // Check if we have a index for the destination tasks if not 0
-        let indexInFinishColumn = indexInFinish ?? 0;
+          // Check if we have a index for the destination tasks if not 0
+          let indexInFinishColumn = indexInFinish ?? 0;
 
-        // If the destination's tasks are empty or we don't have an edge to drop to just put the item in
-        if (destColumn.tasks.length === 0 || !edge) {
-          destTasks.splice(0, 0, task);
-        } else {
-          // If we are targeting the bottom edge we have to add 1 to the destination index in order for the position to be correct
-          if (edge === "bottom") {
-            indexInFinishColumn += 1;
+          // If the destination's tasks are empty or we don't have an edge to drop to just put the item in
+          if (destColumn.tasks.length === 0 || !edge) {
+            destTasks.splice(0, 0, task);
+          } else {
+            // If we are targeting the bottom edge we have to add 1 to the destination index in order for the position to be correct
+            if (edge === "bottom") {
+              indexInFinishColumn += 1;
+            }
+            // Saftey check for the index
+            if (
+              indexInFinishColumn === -1 ||
+              indexInFinishColumn > destColumn.tasks.length + 1
+            )
+              indexInFinishColumn = 0;
+
+            // Add it to the array at it's destination index
+            destTasks.splice(indexInFinishColumn, 0, task);
           }
-          // Saftey check for the index
-          if (
-            indexInFinishColumn === -1 ||
-            indexInFinishColumn > destColumn.tasks.length + 1
-          )
-            indexInFinishColumn = 0;
-
-          // Add it to the array at it's destination index
-          destTasks.splice(indexInFinishColumn, 0, task);
-        }
-        // We iterate over the original columns
-        const updatedColumns = prev.map((col, index) => {
-          // Remove the target item from it's source array
-          if (index === sourceIndex) {
-            return { ...col, tasks: col.tasks.filter((t) => t.id !== task.id) };
-          }
-          // Update the destination column to have the new updated array
-          if (index === destIndex) {
-            return { ...col, tasks: destTasks };
-          }
-          // Return everything else
-          return col;
+          // We iterate over the original columns
+          const updatedColumns = prev.map((col, index) => {
+            // Remove the target item from it's source array
+            if (index === sourceIndex) {
+              return {
+                ...col,
+                tasks: col.tasks.filter((t) => t.id !== task.id),
+              };
+            }
+            // Update the destination column to have the new updated array
+            if (index === destIndex) {
+              return { ...col, tasks: destTasks };
+            }
+            // Return everything else
+            return col;
+          });
+          // Update the columns state
+          return updatedColumns;
         });
-        // Update the columns state
-        return updatedColumns;
       });
     },
     [],
@@ -129,13 +136,16 @@ function MultiListMain() {
           const dest = location.current.dropTargets[0];
           const sourceIndex: number = source.data.index as number;
           const destIndex: number = dest.data.index as number;
+          const closestEdge: Edge = extractClosestEdge(dest.data) || "right";
           // This part actually reorders with the reorder function from Pragmatic
           // We provide the previous columns as the list, pass the correct indexes, and let pragmatic do the rest
           setColumns((prev) => {
-            return reorder({
+            return reorderWithEdge({
               list: prev,
               startIndex: sourceIndex,
-              finishIndex: destIndex,
+              indexOfTarget: destIndex,
+              closestEdgeOfTarget: closestEdge,
+              axis: "horizontal",
             });
           });
         },
@@ -241,13 +251,12 @@ function MultiListMain() {
       <div className="flex flex-row p-4 gap-4 bg-[#2b343c] h-screen  overflow-x-auto whitespace-nowrap">
         {/* Render each column as the MultiListView component and pass the necessary props */}
         {columns.map((column, index) => (
-          <MultiListView
+          <Column
             removeColumn={removeColumn}
             addTask={addTaskToColumn}
             column={column}
-            columnId={column.id}
             index={index}
-            key={index}
+            key={column.id}
           />
         ))}
         <button
@@ -261,4 +270,4 @@ function MultiListMain() {
   );
 }
 
-export default MultiListMain;
+export default Board;

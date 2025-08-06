@@ -6,36 +6,30 @@ import {
 import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
 import { preserveOffsetOnSource } from "@atlaskit/pragmatic-drag-and-drop/element/preserve-offset-on-source";
 import {
-  type Edge,
   attachClosestEdge,
   extractClosestEdge,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
-import type { Item } from "./types";
+import type { TItem } from "./types";
 import { createPortal } from "react-dom";
 import "./multi-list-item.css";
+import type { DraggableState } from "./types";
 
 interface ListItemProps {
-  item: Item;
-  id: string;
+  item: TItem;
   index: number;
   columnId: string;
 }
 
 // State type to do some conditional rendering
-type TaskState =
-  | { type: "idle" }
-  | { type: "preview"; container: HTMLElement; rect: DOMRect }
-  | { type: "is-over"; edge: Edge; rect: DOMRect }
-  | { type: "dragging-left-self" };
 
-function MultiListItem({ item, id, index, columnId }: ListItemProps) {
+function Card({ item, index, columnId }: ListItemProps) {
   // Ref for the element that holds the data
   const itemRef = useRef<HTMLLIElement | null>(null);
   // Ref for the element that is the drop target and container
   const mainRef = useRef<HTMLDivElement | null>(null);
   // Set the initial TaskState to be idle
-  const [state, setState] = useState<TaskState>({ type: "idle" });
+  const [state, setState] = useState<DraggableState>({ type: "idle" });
 
   useEffect(() => {
     const mainElement = mainRef.current;
@@ -49,14 +43,16 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
         element: element,
         getInitialData: () => ({
           item,
-          id,
+          id: item.id,
           index,
           columnId,
           type: "card",
         }),
-        // Reset the state when we drop it
         onDrop: () => {
-          setState({ type: "idle" });
+          // When we drop a card set it's state back to idle
+          setTimeout(() => {
+            setState({ type: "idle" });
+          });
         },
         // This is new though this is what the name suggests a way to customize the drap preview
         onGenerateDragPreview({ nativeSetDragImage, location }) {
@@ -85,11 +81,10 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
         getIsSticky: () => true,
         // Same as the multi-list-view
         getData: ({ element, input }) => {
-          const trueId = item.id;
           return attachClosestEdge(
             {
               item,
-              id: trueId,
+              id: item.id,
               columnId,
               index,
               type: "card",
@@ -107,7 +102,7 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
         },
         // In this we check if the source item's id is the same as the element's
         onDragEnter({ source, self }) {
-          if ((source.data.item as Item).id === item.id) return;
+          if ((source.data.item as TItem).id === item.id) return;
           // We now use it's data to find the edge our mouse pointer is closest to "top" or "bottom"
           const closestEdge = extractClosestEdge(self.data);
           if (!closestEdge) return;
@@ -144,14 +139,19 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
         },
         onDrop: () => {
           // When we drop a card set it's state back to idle
-          setState({ type: "idle" });
+          setTimeout(() => {
+            setState({ type: "idle" });
+          });
         },
       }),
     );
-  }, [item, id, columnId, index]);
+  }, [item, columnId, index]);
 
   return (
     <>
+      {state.type === "is-over" && state.edge === "top" ? (
+        <DragShadow rect={state.rect} />
+      ) : null}
       {/* This div is our main container ref */}
       <div
         ref={mainRef}
@@ -159,14 +159,12 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
           // This is where our "state" is used
           "py-1 relative text-gray-300 " +
           // If we have left the actual source element lower it's opacity to show that it's being dragged
-          (state.type === "dragging-left-self" ? "opacity-20 " : "") +
+          (state.type === "dragging-left-self" ? "hidden " : "")
           // This is the for the drop preview indicators (where the item will be inserted)
           // If you are going for just the simple line look and using react atlassian's official react DropIndicator
           // Which you'll find in the "Optional packages" section here https://atlassian.design/components/pragmatic-drag-and-drop/about
           // This solution is similiar to what they call "shadow drop placement" you can almost do whatever you want as the preview
           // And it's fully cross framework you can find the css classes for rendering these indicators in multi-list-item.css
-          (state.type === "is-over" && state.edge === "top" ? "top-div" : "") +
-          (state.type === "is-over" && state.edge === "bottom" ? "btm-div" : "")
         }
       >
         <li className="bg-[#272729] rounded-lg cursor-grab p-2" ref={itemRef}>
@@ -177,6 +175,9 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
         This again uses our state if the element is in the preview state to render our DragPreview component at the container
         That pragmatic provided in the render() in onGenerateDragPreview
       */}
+      {state.type === "is-over" && state.edge === "bottom" ? (
+        <DragShadow rect={state.rect} />
+      ) : null}
       {state.type === "preview"
         ? createPortal(
             <DragPreview task={item} state={state} />,
@@ -187,8 +188,19 @@ function MultiListItem({ item, id, index, columnId }: ListItemProps) {
   );
 }
 
+function DragShadow({ rect }: { rect: DOMRect }) {
+  return (
+    <div className="my-1">
+      <div
+        style={{ width: rect.width, height: rect.height }}
+        className="bg-[#27292b] rounded-lg"
+      ></div>
+    </div>
+  );
+}
+
 // This is our super simple preview component
-function DragPreview({ task, state }: { task: Item; state: TaskState }) {
+function DragPreview({ task, state }: { task: TItem; state: DraggableState }) {
   // This element is fully customizable with css for a truly custom preview
   return (
     <div
@@ -205,4 +217,4 @@ function DragPreview({ task, state }: { task: Item; state: TaskState }) {
   );
 }
 
-export default MultiListItem;
+export default Card;
